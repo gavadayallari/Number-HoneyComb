@@ -5,7 +5,7 @@ import type { GameConfigType, GameStateType } from "@/types/TGames";
 import Image from "@/components/ui/image";
 import FloatingText from "@/components/FloatingText";
 import type { RefType } from "@/App";
-import { resolveBackgroundCss, uploadedAssetURL } from "@/lib/utils";
+import { resolveBackgroundCss } from "@/lib/utils";
 import TapToStart from "@/components/TapToStart";
 import ReplayScreen from "@/components/ReplayScreen";
 import HintGuide from "@/components/HintGuide";
