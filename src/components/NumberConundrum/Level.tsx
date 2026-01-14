@@ -31,7 +31,18 @@ const Hexagon = ({
             />
 
             {/* Number */}
-            <span className={`absolute text-2xl md:text-3xl font-bold ${status === 'locked' ? 'text-gray-400' : 'text-gray-800'}`}>
+            <span
+                className={`absolute ${status === 'locked' ? 'text-gray-400' : 'text-gray-800'}`}
+                style={{
+                    fontFamily: 'Nunito',
+                    fontWeight: 800,
+                    fontStyle: 'normal',
+                    fontSize: '25px',
+                    lineHeight: '100%',
+                    letterSpacing: '0%',
+                    textAlign: 'center'
+                }}
+            >
                 {number}
             </span>
 
@@ -39,9 +50,24 @@ const Hexagon = ({
             {status === 'completed' && numStars > 0 && (
                 <div className="absolute -top-2 flex justify-center w-full z-20">
                     <div className="flex items-end space-x-0">
-                        {numStars >= 1 && <img src="images/star_big.png" alt="star" className={`w-5 h-5 drop-shadow-sm -rotate-12 mb-[1px] ${numStars >= 1 ? '' : 'grayscale opacity-30'}`} />}
-                        {numStars >= 2 && <img src="images/star_big.png" alt="star" className={`w-5 h-5 drop-shadow-sm mb-2 z-10 ${numStars >= 2 ? '' : 'grayscale opacity-30'}`} />}
-                        {numStars >= 3 && <img src="images/star_big.png" alt="star" className={`w-5 h-5 drop-shadow-sm rotate-12 mb-[1px] ${numStars >= 3 ? '' : 'grayscale opacity-30'}`} />}
+                        {/* Left Star - Displayed when 2 or more stars */}
+                        <img
+                            src="images/star_big.png"
+                            alt="star"
+                            className={`w-5 h-5 drop-shadow-sm -rotate-12 mb-[1px] ${numStars >= 2 ? 'opacity-100' : 'opacity-0'}`}
+                        />
+                        {/* Center Star - Displayed when 1 or more stars */}
+                        <img
+                            src="images/star_big.png"
+                            alt="star"
+                            className={`w-5 h-5 drop-shadow-sm mb-2 z-10 ${numStars >= 1 ? 'opacity-100' : 'opacity-0'}`}
+                        />
+                        {/* Right Star - Displayed when 3 stars */}
+                        <img
+                            src="images/star_big.png"
+                            alt="star"
+                            className={`w-5 h-5 drop-shadow-sm rotate-12 mb-[1px] ${numStars >= 3 ? 'opacity-100' : 'opacity-0'}`}
+                        />
                     </div>
                 </div>
             )}
@@ -68,9 +94,18 @@ const Level: React.FC<LevelProps> = ({ onLevelSelect, levelStars = {} }) => {
             {/* Main Title - Responsive Position */}
             <div className="absolute top-4 md:top-8 z-50">
                 <div className="bg-[#FFEE37] px-6 py-2 md:px-8 md:py-2 rounded-full">
-                    <h1 className="text-xl md:text-2xl font-black text-black uppercase tracking-wider">
+                    <span className="text-black uppercase whitespace-nowrap"
+                        style={{
+                            fontFamily: '"Black Han Sans", sans-serif',
+                            fontWeight: 400,
+                            fontStyle: 'normal',
+                            fontSize: '22px',
+                            lineHeight: '34px',
+                            letterSpacing: '0.1em',
+                            verticalAlign: 'middle',
+                        }}>
                         Number HoneyComb
-                    </h1>
+                    </span>
                 </div>
             </div>
 

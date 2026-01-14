@@ -88,7 +88,34 @@ export const useConundrumGame = (initialDifficulty: Difficulty = "1-50") => {
     const prefilledSet = new Set<string>();
     prefilledSet.add("0,0");
 
-    // Randomly pick (prefilledCount - 1) more distinct blocks
+    if (difficulty === "1-50") {
+      // EASY MODE: Helper to pick adjacent pairs (Side-by-Side)
+      // We aim for at least 2 pairs if possible to make addition easy.
+      const potentialPairs: { r: number, c: number }[] = [];
+      // Collect valid pairs from rows > 2 (bottom/middle rows are easier for base addition)
+      for (let r = 3; r < rows; r++) {
+        for (let c = 0; c < r; c++) {
+          // Add left item of the pair. We will try to add (r,c) and (r,c+1)
+          potentialPairs.push({ r, c });
+        }
+      }
+
+      // Try to pick distinct pairs until we are close to quota
+      let attempts = 0;
+      while (prefilledSet.size < config.prefilledCount - 1 && attempts < 20) {
+        attempts++;
+        const randIdx = Math.floor(Math.random() * potentialPairs.length);
+        const { r, c } = potentialPairs[randIdx];
+
+        // Check if both spots are free
+        if (!prefilledSet.has(`${r},${c}`) && !prefilledSet.has(`${r},${c + 1}`)) {
+          prefilledSet.add(`${r},${c}`);
+          prefilledSet.add(`${r},${c + 1}`);
+        }
+      }
+    }
+
+    // Fill remaining quota randomly
     while (prefilledSet.size < config.prefilledCount) {
       const randomIndex = Math.floor(Math.random() * allCoords.length);
       const coord = allCoords[randomIndex];
@@ -247,6 +274,46 @@ export const useConundrumGame = (initialDifficulty: Difficulty = "1-50") => {
     });
   };
 
+  // Handles placing a specific keypad item into a specific block (Drag and Drop)
+  const placeKeypadItem = (r: number, c: number, keypadId: string, value: number) => {
+    // Basic validation
+    if (r < 0 || r >= gameState.grid.length || c < 0 || c >= gameState.grid[r].length) return;
+    if (gameState.grid[r][c].isPrefilled) return;
+
+    setGameState((prev) => {
+      const newGrid = [...prev.grid.map(row => [...row])];
+      const oldBlock = newGrid[r][c];
+      let newKeypadNumbers = prev.keypadNumbers.map(k => ({ ...k }));
+
+      // 1. If the target block already had a value (from a keypad item), return THAT item to the pool
+      if (oldBlock.keypadId) {
+        newKeypadNumbers = newKeypadNumbers.map(k =>
+          k.id === oldBlock.keypadId ? { ...k, isUsed: false } : k
+        );
+      }
+
+      // 2. Mark the NEW keypad item as used
+      newKeypadNumbers = newKeypadNumbers.map(k =>
+        k.id === keypadId ? { ...k, isUsed: true } : k
+      );
+
+      // 3. Update the target block
+      newGrid[r][c] = {
+        ...oldBlock,
+        value: value.toString(),
+        keypadId: keypadId,
+        status: "normal"
+      };
+
+      return {
+        ...prev,
+        grid: newGrid,
+        keypadNumbers: newKeypadNumbers,
+        selectedBlock: null // Deselect any block to avoid confusion
+      };
+    });
+  };
+
   const checkSolution = () => {
 
 
@@ -278,7 +345,26 @@ export const useConundrumGame = (initialDifficulty: Difficulty = "1-50") => {
     else if (accuracy >= 80) stars = 2;
     else if (accuracy >= 50) stars = 1;
 
-    const isWin = accuracy >= 50;
+    // Check if grid is full
+    const isGridFull = gameState.grid.every(row =>
+      row.every(block => block.value !== "")
+    );
+
+    if (!isGridFull) {
+      // Even if not full, we return false to indicate not won. 
+      // We still update the grid to show validation for filled blocks.
+      setGameState(prev => ({
+        ...prev,
+        grid: newGrid,
+        isComplete: false, // Ensure it doesn't complete
+        stars,
+        accuracy
+      }));
+      return false;
+    }
+
+    // Win condition: Accuracy must be at least 50% (1 star or more)
+    const isWin = stars >= 1;
 
     setGameState(prev => ({
       ...prev,
@@ -302,6 +388,7 @@ export const useConundrumGame = (initialDifficulty: Difficulty = "1-50") => {
     backspace,
     checkSolution,
     resetGame,
+    placeKeypadItem,
     setDifficulty: (d: Difficulty) => generateLevel(d)
   };
 };

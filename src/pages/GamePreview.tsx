@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState, useCallback } from "react";
 import PreviewSidebar from "@/components/PreviewSidebar";
 
 import type { GameConfigType, GameStateType } from "@/types/TGames";
@@ -48,21 +48,35 @@ const GamePreview = forwardRef<
   const [floatingText] = useState<string | null>(null);
   const [gameKey, setGameKey] = useState(0);
   const gameGridRef = useRef<HTMLDivElement | null>(null);
-  const backgroundMusicRef = useRef<HTMLAudioElement>(
-    new Audio("media/background.mp3")
-  );
+  const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
+  const levelWinRef = useRef<HTMLAudioElement | null>(null);
+  const uiClickMusicRef = useRef<HTMLAudioElement | null>(null);
+  const successMusicRef = useRef<HTMLAudioElement | null>(null);
 
-  const levelWinRef = useRef<HTMLAudioElement>(
-    new Audio("media/level-win.webm")
-  );
+  useEffect(() => {
+    // Initialize Audio objects once on mount
+    backgroundMusicRef.current = new Audio("media/Backgoundmusic-aduio.mp4");
+    levelWinRef.current = new Audio("media/level-win.webm");
+    uiClickMusicRef.current = new Audio("media/ui-click.webm");
+    successMusicRef.current = new Audio("media/success.webm");
 
-  const uiClickMusicRef = useRef<HTMLAudioElement>(
-    new Audio("media/ui-click.webm")
-  );
-  const successMusicRef = useRef<HTMLAudioElement>(
-    new Audio("media/success.webm")
-  );
+    // Optional: Preload
+    backgroundMusicRef.current.load();
+    levelWinRef.current.load();
+    uiClickMusicRef.current.load();
+    successMusicRef.current.load();
 
+    return () => {
+      // Cleanup on unmount
+      [backgroundMusicRef, levelWinRef, uiClickMusicRef, successMusicRef].forEach(ref => {
+        if (ref.current) {
+          ref.current.pause();
+          ref.current.currentTime = 0;
+          ref.current = null;
+        }
+      });
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -70,11 +84,7 @@ const GamePreview = forwardRef<
     }, 1000);
     return () => {
       clearTimeout(timer);
-      successMusicRef.current?.pause();
-      successMusicRef.current?.pause();
-      backgroundMusicRef.current?.pause();
-      successMusicRef.current = new Audio("media/success.webm");
-      backgroundMusicRef.current = new Audio("media/background.mp3");
+      // Removed manual ref resetting here as strict cleanup handles it
     };
   }, [config, gameId]);
 
@@ -288,7 +298,12 @@ const GamePreview = forwardRef<
     setGameState((prev) => ({ ...prev, isMuted: !prev.isMuted }));
   };
 
-  const handleWin = (stars: number) => {
+  const isWinningRef = useRef(false);
+
+  const handleWin = useCallback((stars: number) => {
+    if (isWinningRef.current || gameState.hasWon) return;
+    isWinningRef.current = true;
+
     setFreezeTimer(true);
     setCurrentStars(stars);
     setLevelStars(prev => ({ ...prev, [currentLevel]: stars }));
@@ -305,12 +320,27 @@ const GamePreview = forwardRef<
         // Removed clap logic
       });
     }
-    // playBigConfetti(); // Removed as requested
-    // Removed specific Congratulations text as requested
+
     setTimeout(() => {
       setGameState((prev) => ({ ...prev, isPlaying: false, hasWon: true }));
       setFreezeTimer(false);
+      isWinningRef.current = false;
     }, 1000);
+  }, [gameState.hasWon, gameState.isMuted, currentLevel]);
+
+  const goToLevelSelection = () => {
+    setFreezeTimer(false);
+    setGameKey((prev) => prev + 1);
+    setGameState((prev) => ({
+      isPlaying: false,
+      isMuted: prev.isMuted,
+      hasWon: false,
+      hasTimeUp: false,
+      timeLeft: config?.duration ?? 0,
+      duration: config?.duration ?? 0,
+      hasStarted: false,
+    }));
+    setShowLevelScreen(true);
   };
 
   if (showSplashScreen) {
@@ -343,9 +373,6 @@ const GamePreview = forwardRef<
       className="game-preview-container"
       style={{
         backgroundImage: resolveBackgroundCss(config?.background, gameId),
-        backgroundSize: "cover",
-        backgroundPosition: "bottom center",
-        backgroundRepeat: "no-repeat",
       }}
     >
       <div ref={gameGridRef}>
@@ -369,7 +396,18 @@ const GamePreview = forwardRef<
       <TapToStart
         firstTap={firstTap}
         setFirstTap={setFirstTap}
-        handleStartGame={startGame}
+        handleStartGame={() => {
+          // New Flow: TapToStart -> Level Screen
+          // We don't start the game (timer/music) immediately. We go to Level selection.
+          setFirstTap(false);
+          setShowLevelScreen(true);
+          // Optional: Play background music if desired on Level screen?
+          // If so:
+          if (!gameState.isMuted && backgroundMusicRef.current) {
+            backgroundMusicRef.current.play();
+            backgroundMusicRef.current.loop = true;
+          }
+        }}
       />
 
       {showLevelScreen && (
@@ -394,10 +432,7 @@ const GamePreview = forwardRef<
         <LevelCompleted
           level={currentLevel}
           stars={currentStars}
-          onNextLevel={() => {
-            handleResetGame();
-            setShowLevelScreen(true);
-          }}
+          onNextLevel={goToLevelSelection}
         />
       )}
 

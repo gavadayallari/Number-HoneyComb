@@ -14,9 +14,20 @@ const LevelCompleted: React.FC<LevelCompletedProps> = ({ onNextLevel, level, sta
             {/* Main Title - Responsive */}
             <div className="absolute top-4 md:top-4 z-50">
                 <div className="bg-[#FFEE37] px-6 py-2 md:px-8 md:py-2 rounded-full">
-                    <h1 className="text-xl md:text-2xl font-black text-black uppercase tracking-wider">
+                    <span
+                        className="text-black uppercase whitespace-nowrap"
+                        style={{
+                            fontFamily: '"Black Han Sans", sans-serif',
+                            fontWeight: 400,
+                            fontStyle: 'normal',
+                            fontSize: '22px',
+                            lineHeight: '34px',
+                            letterSpacing: '0.1em', // 10%
+                            verticalAlign: 'middle',
+                        }}
+                    >
                         Number HoneyComb
-                    </h1>
+                    </span>
                 </div>
             </div>
 
@@ -42,21 +53,21 @@ const LevelCompleted: React.FC<LevelCompletedProps> = ({ onNextLevel, level, sta
                                 <img
                                     src="/images/star_big.png"
                                     alt="Star"
-                                    className={`w-12 md:w-12 drop-shadow-lg transition-all duration-500 ${stars >= 2 ? 'scale-100 opacity-100' : 'scale-75 opacity-30 grayscale'}`}
+                                    className={`w-12 md:w-12 drop-shadow-lg transition-all duration-500 ${stars >= 2 ? 'scale-100 opacity-100' : 'scale-100 opacity-30 grayscale'}`}
                                     style={{ transitionDelay: '200ms' }}
                                 />
                                 {/* Center Star - Elevated */}
                                 <img
                                     src="/images/star_big.png"
                                     alt="Star"
-                                    className={`w-14 md:w-12 mb-4 md:mb-6 drop-shadow-lg transition-all duration-500 ${stars >= 1 ? 'scale-100 opacity-100' : 'scale-75 opacity-30 grayscale'}`}
+                                    className={`w-14 md:w-12 mb-4 md:mb-6 drop-shadow-lg transition-all duration-500 ${stars >= 1 ? 'scale-100 opacity-100' : 'scale-100 opacity-30 grayscale'}`}
                                     style={{ transitionDelay: '0ms' }}
                                 />
                                 {/* Right Star */}
                                 <img
                                     src="/images/star_big.png"
                                     alt="Star"
-                                    className={`w-12 md:w-12 drop-shadow-lg transition-all duration-500 ${stars >= 3 ? 'scale-100 opacity-100' : 'scale-75 opacity-30 grayscale'}`}
+                                    className={`w-12 md:w-12 drop-shadow-lg transition-all duration-500 ${stars >= 3 ? 'scale-100 opacity-100' : 'scale-100 opacity-30 grayscale'}`}
                                     style={{ transitionDelay: '400ms' }}
                                 />
                             </div>
@@ -68,7 +79,17 @@ const LevelCompleted: React.FC<LevelCompletedProps> = ({ onNextLevel, level, sta
                                     alt="Level Badge"
                                     className="w-48 md:w-52 drop-shadow-lg"
                                 />
-                                <span className="absolute text-2xl md:text-xl font-black text-black tracking-wide -mt-4">
+                                <span className="absolute text-black -mt-4"
+                                    style={{
+                                        fontFamily: 'Nunito',
+                                        fontWeight: 800,
+                                        fontSize: '22px',
+                                        lineHeight: '100%',
+                                        letterSpacing: '0%',
+                                        textAlign: 'center',
+                                        fontStyle: 'normal' // 'Black' font style usually implies weight 900
+                                    }}
+                                >
                                     Level {level}
                                 </span>
                             </div>

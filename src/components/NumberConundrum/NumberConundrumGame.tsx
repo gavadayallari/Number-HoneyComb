@@ -3,6 +3,9 @@ import { useConundrumGame } from '@/hooks/useConundrumGame';
 import type { BlockData, KeypadItem } from '@/hooks/useConundrumGame';
 import { cn, formatTime } from '@/lib/utils';
 import TimerSvg from "@/assets/TimerSvg"; // Import TimerSvg
+import { DndContext, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { createPortal } from 'react-dom';
 
 // --- Pyramid Components ---
 
@@ -53,6 +56,37 @@ const Block: React.FC<BlockProps> = ({ data, isSelected, onClick }) => {
 };
 
 
+// --- DND Wrappers ---
+
+const DraggableHexButton: React.FC<HexButtonProps & { id: string; value: number }> = ({ id, value, ...props }) => {
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+        id: id,
+        data: { value, type: 'keypad-item' },
+        disabled: !props.isVisible,
+    });
+
+    return (
+        <div ref={setNodeRef} {...listeners} {...attributes} className={isDragging ? 'opacity-50' : ''} style={{ touchAction: 'none' }}>
+            <HexButton {...props} />
+        </div>
+    );
+};
+
+const DroppableBlock: React.FC<BlockProps & { r: number; c: number }> = ({ r, c, ...props }) => {
+    const { setNodeRef, isOver } = useDroppable({
+        id: `block-${r}-${c}`,
+        data: { r, c, type: 'block' },
+        disabled: props.data.isPrefilled
+    });
+
+    return (
+        <div ref={setNodeRef} className={isOver && !props.data.isPrefilled ? "scale-110 brightness-110 transition-all" : ""}>
+            <Block {...props} />
+        </div>
+    );
+};
+
+
 // Pyramid Component
 interface PyramidProps {
     grid: BlockData[][];
@@ -66,8 +100,10 @@ const Pyramid: React.FC<PyramidProps> = ({ grid, selectedBlock, onBlockSelect })
             {grid.map((row, rIndex) => (
                 <div key={rIndex} className="flex gap-0 justify-center">
                     {row.map((block, cIndex) => (
-                        <Block
+                        <DroppableBlock
                             key={`${rIndex}-${cIndex}`}
+                            r={rIndex}
+                            c={cIndex}
                             data={block}
                             isSelected={selectedBlock?.r === rIndex && selectedBlock?.c === cIndex}
                             onClick={() => onBlockSelect(rIndex, cIndex)}
@@ -127,8 +163,10 @@ const Keypad: React.FC<KeypadProps> = ({ numbers, onSelect }) => {
         <div className="flex flex-col items-center w-full max-w-4xl mx-auto nc-keypad-container">
             <div className="flex justify-center flex-wrap -space-x-1 sm:-space-x-1 md:-space-x-1 z-10 nc-keypad-row">
                 {row1Items.map((item) => (
-                    <HexButton
+                    <DraggableHexButton
                         key={item.id}
+                        id={item.id}
+                        value={item.value}
                         label={item.value}
                         onClick={() => onSelect(item.id, item.value)}
                         isVisible={!item.isUsed}
@@ -137,8 +175,10 @@ const Keypad: React.FC<KeypadProps> = ({ numbers, onSelect }) => {
             </div>
             <div className="flex justify-center flex-wrap gap-0 -space-x-1 sm:-space-x-1 md:-space-x-1 -mt-2 sm:-mt-2 md:-mt-2 z-0 nc-keypad-row">
                 {row2Items.map((item) => (
-                    <HexButton
+                    <DraggableHexButton
                         key={item.id}
+                        id={item.id}
+                        value={item.value}
                         label={item.value}
                         onClick={() => onSelect(item.id, item.value)}
                         isVisible={!item.isUsed}
@@ -165,6 +205,7 @@ const NumberConundrumGame: React.FC<NumberConundrumGameProps> = ({ onWin, isPaus
         selectBlock,
         handleKeypadSelect,
         checkSolution,
+        placeKeypadItem // Destructure new function
     } = useConundrumGame("1-50");
 
     useEffect(() => {
@@ -173,94 +214,165 @@ const NumberConundrumGame: React.FC<NumberConundrumGameProps> = ({ onWin, isPaus
         }
     }, [gameState.isComplete, gameState.stars, onWin]);
 
-    return (
-        <div className="relative flex flex-col h-full w-full max-w-4xl mx-auto p-4 md:p-0 -mt-2 sm:-mt-2 md:-mt-15 overflow-hidden select-none nc-game-container">
+    // DND Sensors
+    // Using PointerSensor for better mobile/desktop compatibility.
+    // Activation constraint of distance: 8 allows for a small tap wiggle without triggering drag,
+    // but ensures drag starts relatively quickly.
+    // DND Sensors
+    // Using PointerSensor for optimal mobile/desktop compatibility using standard recommendations.
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        })
+    );
 
-            {/* Header: Game Title, Timer, Level */}
-            <div className="flex-none flex flex-col items-center justify-center w-full z-50 py-1 sm:py-2 gap-1 sm:gap-5 mt-0 sm:mt-0 nc-header-container">
-                {/* Top Row: Title and Timer */}
-                <div className="flex flex-row items-center justify-center gap-2 sm:gap-38 ml-80 w-full pointer-events-none">
-                    {/* Game Title */}
-                    {gameName && (
-                        <div className="bg-[#FFEE37] px-3 py-1 sm:px-6 sm:py-1 rounded-full shadow-sm border border-transparent">
-                            <span
-                                className="text-xs sm:text-xl md:text-2xl font-black text-black tracking-wider whitespace-nowrap luckiest-guy-regular"
-                                style={{ fontFamily: '"Black Han Sans", sans-serif' }}
-                            >
-                                {gameName}
+    const [activeId, setActiveId] = React.useState<string | null>(null);
+
+    const handleDragStart = (event: any) => {
+        if (!isPaused) {
+            setActiveId(event.active.id);
+        }
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        setActiveId(null);
+        if (isPaused) return;
+
+        const { active, over } = event;
+
+        if (over && over.data.current?.type === 'block') {
+            const { r, c } = over.data.current;
+            const value = active.data.current?.value;
+            if (value !== undefined) {
+                placeKeypadItem(r, c, active.id as string, value);
+            }
+        }
+    };
+
+    // Helper to find active item value for overlay
+    const activeItem = gameState.keypadNumbers.find(k => k.id === activeId);
+
+    return (
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <div className="relative flex flex-col h-full w-full max-w-4xl mx-auto p-4 md:p-0 -mt-2 sm:-mt-2 md:-mt-15 overflow-hidden select-none nc-game-container">
+
+                {/* Header: Game Title, Timer, Level */}
+                <div className="flex-none flex flex-col items-center justify-center w-full z-50 py-1 sm:py-2 gap-1 sm:gap-5 mt-0 sm:mt-0 nc-header-container">
+                    {/* Top Row: Title and Timer */}
+                    <div className="flex flex-row items-center justify-center gap-2 sm:gap-38 ml-70 w-full pointer-events-none">
+                        {/* Game Title */}
+                        {gameName && (
+                            <div className="bg-[#FFEE37] px-3 py-1 sm:px-6 sm:py-1 rounded-full shadow-sm border border-transparent">
+                                <span
+                                    className="text-black whitespace-nowrap"
+                                    style={{
+                                        fontFamily: '"Black Han Sans", sans-serif',
+                                        fontWeight: 400,
+                                        fontStyle: 'normal',
+                                        fontSize: '18px',
+                                        lineHeight: '34px',
+                                        letterSpacing: '0.1em',
+                                        verticalAlign: 'middle',
+                                    }}
+                                >
+                                    {gameName}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Timer */}
+                        <div className="px-3 py-1 sm:px-5 sm:py-1 flex items-center gap-1 sm:gap-2">
+                            <div className="w-4 h-4 sm:w-6 sm:h-6 -mt-3 flex-shrink-0">
+                                <TimerSvg />
+                            </div>
+                            <span className="text-sm sm:text-lg md:text-xl font-bold text-gray-900 tabular-nums leading-none pt-0.5">
+                                {formatTime(timeLeft)}
                             </span>
                         </div>
-                    )}
+                    </div>
 
-                    {/* Timer */}
-                    <div className="px-3 py-1 sm:px-5 sm:py-1 flex items-center gap-1 sm:gap-2">
-                        <div className="w-4 h-4 sm:w-6 sm:h-6 -mt-3 flex-shrink-0">
-                            <TimerSvg />
-                        </div>
-                        <span className="text-sm sm:text-lg md:text-xl font-bold text-gray-900 tabular-nums leading-none pt-0.5">
-                            {formatTime(timeLeft)}
+                    {/* Level Indicator */}
+                    <div className="flex items-center justify-center mt-4">
+                        <span className="text-lg md:text-xl font-black text-black uppercase tracking-wider"
+                            style={{
+                                fontFamily: '"Nunito", sans-serif',
+                                fontWeight: 800,
+                                fontStyle: 'ExtraBold',
+                                fontSize: '20px',
+                                lineHeight: '34px',
+                                letterSpacing: '0.1em',
+                                verticalAlign: 'middle',
+                            }}
+                        >
+                            LEVEL {level}
                         </span>
                     </div>
                 </div>
 
-                {/* Level Indicator */}
-                <div className="flex items-center justify-center mt-4">
-                    <span className="text-lg md:text-xl font-black text-black uppercase tracking-wider"
-                        style={{ fontFamily: '"Nunito", sans-serif' }}>
-                        LEVEL {level}
-                    </span>
-                </div>
-            </div>
+                {/* Main Game Area (Board + Bees) */}
+                <div className="flex-1 w-full flex flex-col items-center justify-center relative min-h-0">
 
-            {/* Main Game Area (Board + Bees) */}
-            <div className="flex-1 w-full flex flex-col items-center justify-center relative min-h-0">
+                    {/* Visual Elements (Bees) - Responsive Positioning - Visible on all screens but scaled */}
+                    <div className="absolute inset-0 pointer-events-none">
+                        {/* Position bees relative to this container. Centered for desktop, potentially overlapping on very small screens if not scaled carefully. */}
+                        <img src="images/Honey-img.png" alt="Bee" className="absolute top-[10%] left-[35%] w-8 sm:w-10 md:w-10 animate-float-slow opacity-80 sm:opacity-100" />
+                        <img src="images/Honey-right-top.png" alt="Bee" className="absolute top-[15%] right-[35%] w-8 sm:w-10 md:w-12 animate-float-medium opacity-80 sm:opacity-100" />
+                        <img src="images/Honey-left-buttom.png" alt="Bee" className="absolute bottom-[20%] left-[27%] w-8 sm:w-10 md:w-12 animate-float-fast opacity-80 sm:opacity-100" />
+                        <img src="images/Honey-rigth-buttom.png" alt="Bee" className="absolute bottom-[20%] right-[27%] w-8 sm:w-10 md:w-12 animate-float-slow opacity-80 sm:opacity-100" />
+                    </div>
 
-                {/* Visual Elements (Bees) - Responsive Positioning - Visible on all screens but scaled */}
-                <div className="absolute inset-0 pointer-events-none">
-                    {/* Position bees relative to this container. Centered for desktop, potentially overlapping on very small screens if not scaled carefully. */}
-                    <img src="images/Honey-img.png" alt="Bee" className="absolute top-[10%] left-[35%] w-8 sm:w-10 md:w-10 animate-float-slow opacity-80 sm:opacity-100" />
-                    <img src="images/Honey-right-top.png" alt="Bee" className="absolute top-[15%] right-[35%] w-8 sm:w-10 md:w-12 animate-float-medium opacity-80 sm:opacity-100" />
-                    <img src="images/Honey-left-buttom.png" alt="Bee" className="absolute bottom-[20%] left-[27%] w-8 sm:w-10 md:w-12 animate-float-fast opacity-80 sm:opacity-100" />
-                    <img src="images/Honey-rigth-buttom.png" alt="Bee" className="absolute bottom-[20%] right-[27%] w-8 sm:w-10 md:w-12 animate-float-slow opacity-80 sm:opacity-100" />
-                </div>
-
-                {/* Pyramid Board - Dynamic Scaling */}
-                {/* Scale down on small screens to fit iPhone SE and others without overlapping bees/controls */}
-                <div className="relative z-0 transform transition-transform scale-75 sm:scale-100 md:scale-110 origin-center nc-pyramid-container">
-                    <Pyramid
-                        grid={gameState.grid}
-                        selectedBlock={gameState.selectedBlock}
-                        onBlockSelect={isPaused ? () => { } : selectBlock}
-                    />
-                </div>
-            </div>
-
-            {/* Controls Section - Pushed to bottom with safe spacing */}
-            <div className="flex-none w-full flex flex-col items-center gap-1 sm:gap-4 pb-2 sm:pb-6 md:pb-8 mt-1 sm:mt-8 z-10">
-
-                {/* Keypad Container */}
-                <div className={`w-full max-w-lg px-2 ${isPaused ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <Keypad numbers={gameState.keypadNumbers} onSelect={handleKeypadSelect} />
+                    {/* Pyramid Board - Dynamic Scaling */}
+                    {/* Scale down on small screens to fit iPhone SE and others without overlapping bees/controls */}
+                    <div className="relative z-0 transform transition-transform scale-75 sm:scale-100 md:scale-110 origin-center nc-pyramid-container">
+                        <Pyramid
+                            grid={gameState.grid}
+                            selectedBlock={gameState.selectedBlock}
+                            onBlockSelect={isPaused ? () => { } : selectBlock}
+                        />
+                    </div>
                 </div>
 
-                {/* Submit Button */}
-                <button
-                    onClick={() => checkSolution()}
-                    disabled={isPaused}
-                    className={`
+                {/* Controls Section - Pushed to bottom with safe spacing */}
+                <div className="flex-none w-full flex flex-col items-center gap-1 sm:gap-4 pb-2 sm:pb-6 md:pb-8 mt-1 sm:mt-8 z-10">
+
+                    {/* Keypad Container */}
+                    <div className={`w-full max-w-lg px-2 ${isPaused ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <Keypad numbers={gameState.keypadNumbers} onSelect={handleKeypadSelect} />
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                        onClick={() => checkSolution()}
+                        disabled={isPaused}
+                        className={`
                         transition-transform hover:scale-105 active:scale-95 focus:outline-none mt-1 sm:mt-4 nc-submit-button
                         ${isPaused ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}
                     `}
-                >
-                    <img
-                        src="images/Button-sumbit.png"
-                        alt="Submit"
-                        className="w-28 sm:w-48 md:w-56 h-auto object-contain drop-shadow-lg"
-                        draggable={false}
-                    />
-                </button>
+                    >
+                        <img
+                            src="images/Button-sumbit.png"
+                            alt="Submit"
+                            className="w-28 sm:w-48 md:w-56 h-auto object-contain drop-shadow-lg"
+                            draggable={false}
+                        />
+                    </button>
+                </div>
+
+                {/* Drag Overlay */}
+                {createPortal(
+                    <DragOverlay dropAnimation={null}>
+                        {activeId && activeItem ? (
+                            <div className="opacity-90 scale-110 pointer-events-none">
+                                <HexButton label={activeItem.value} isVisible={true} />
+                            </div>
+                        ) : null}
+                    </DragOverlay>,
+                    document.body
+                )}
             </div>
-        </div>
+        </DndContext>
     );
 };
 

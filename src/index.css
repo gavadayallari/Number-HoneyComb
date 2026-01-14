@@ -388,8 +388,19 @@ html {
   overflow: hidden;
   position: relative;
   background-color: #000B18;
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
   padding-top: 110px;
   /* Extended padding for stacked timer on mobile */
+}
+
+/* Fix for Mobile Landscape (iPhone SE, S8+, etc.) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .game-preview-container {
+    padding-top: 25px !important;
+    background-position: center center !important;
+  }
 }
 
 @media (min-width: 640px) {
@@ -1250,7 +1261,7 @@ screen and (orientation: landscape) {
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
-    padding-top: 0 !important;
+    padding-top: 1rem !important;
     padding-bottom: 0 !important;
     position: relative !important;
   }
@@ -1300,6 +1311,7 @@ screen and (orientation: landscape) {
   .nc-header-container>div:nth-child(2) {
     position: absolute !important;
     top: -4vh !important;
+    margin-left: 5rem !important;
     justify-content: center !important;
     pointer-events: none;
     z-index: 40 !important;
@@ -1324,7 +1336,7 @@ screen and (orientation: landscape) {
     width: 100% !important;
     display: flex !important;
     justify-content: center !important;
-    margin-top: -15vh !important;
+    margin-top: -10vh !important;
     z-index: 10 !important;
     margin-bottom: -20vh !important;
   }
@@ -1342,12 +1354,12 @@ screen and (orientation: landscape) {
   .nc-keypad-container {
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    gap: 0 !important;
+    gap: 2vh !important;
     width: 100% !important;
     justify-content: center !important;
     margin: 0 !important;
     padding: 0 0.5vw !important;
-    margin-bottom: 5.5vh !important;
+    margin-bottom: 3.5vh !important;
   }
 
   .nc-keypad-row {
@@ -1457,7 +1469,7 @@ screen and (orientation: landscape) {
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
-    padding-top: 1vh !important;
+    padding-top: 10vh !important;
     padding-bottom: 2vh !important;
     position: relative !important;
   }
@@ -1531,7 +1543,7 @@ screen and (orientation: landscape) {
     width: 100% !important;
     display: flex !important;
     justify-content: center !important;
-    margin-top: -4vh !important;
+    margin-top: 2vh !important;
     z-index: 10 !important;
   }
 
@@ -1548,7 +1560,7 @@ screen and (orientation: landscape) {
   .nc-keypad-container {
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    gap: 0 !important;
+    gap: 1vh !important;
     width: 100% !important;
     justify-content: center !important;
     margin: 0 !important;
