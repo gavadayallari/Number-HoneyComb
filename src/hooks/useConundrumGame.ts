@@ -247,6 +247,46 @@ export const useConundrumGame = (initialDifficulty: Difficulty = "1-50") => {
     });
   };
 
+  // Handles placing a specific keypad item into a specific block (Drag and Drop)
+  const placeKeypadItem = (r: number, c: number, keypadId: string, value: number) => {
+    // Basic validation
+    if (r < 0 || r >= gameState.grid.length || c < 0 || c >= gameState.grid[r].length) return;
+    if (gameState.grid[r][c].isPrefilled) return;
+
+    setGameState((prev) => {
+      const newGrid = [...prev.grid.map(row => [...row])];
+      const oldBlock = newGrid[r][c];
+      let newKeypadNumbers = prev.keypadNumbers.map(k => ({ ...k }));
+
+      // 1. If the target block already had a value (from a keypad item), return THAT item to the pool
+      if (oldBlock.keypadId) {
+        newKeypadNumbers = newKeypadNumbers.map(k =>
+          k.id === oldBlock.keypadId ? { ...k, isUsed: false } : k
+        );
+      }
+
+      // 2. Mark the NEW keypad item as used
+      newKeypadNumbers = newKeypadNumbers.map(k =>
+        k.id === keypadId ? { ...k, isUsed: true } : k
+      );
+
+      // 3. Update the target block
+      newGrid[r][c] = {
+        ...oldBlock,
+        value: value.toString(),
+        keypadId: keypadId,
+        status: "normal"
+      };
+
+      return {
+        ...prev,
+        grid: newGrid,
+        keypadNumbers: newKeypadNumbers,
+        selectedBlock: null // Deselect any block to avoid confusion
+      };
+    });
+  };
+
   const checkSolution = () => {
 
 
@@ -302,6 +342,7 @@ export const useConundrumGame = (initialDifficulty: Difficulty = "1-50") => {
     backspace,
     checkSolution,
     resetGame,
+    placeKeypadItem,
     setDifficulty: (d: Difficulty) => generateLevel(d)
   };
 };
