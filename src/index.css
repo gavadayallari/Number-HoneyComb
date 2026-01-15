@@ -1332,7 +1332,7 @@ screen and (orientation: landscape) {
   }
 
   .nc-pyramid-container {
-    transform: scale(0.75) !important;
+    transform: scale(0.85) !important;
     width: 100% !important;
     display: flex !important;
     justify-content: center !important;
@@ -1359,7 +1359,8 @@ screen and (orientation: landscape) {
     justify-content: center !important;
     margin: 0 !important;
     padding: 0 0.5vw !important;
-    margin-bottom: 3.5vh !important;
+    margin-bottom: 2.5vh !important;
+    margin-top: 2vh !important;
   }
 
   .nc-keypad-row {
@@ -1382,7 +1383,7 @@ screen and (orientation: landscape) {
     margin: 0 !important;
     transform: scale(1.2) !important;
     margin-top: 0 !important;
-    margin-bottom: 20vh !important;
+    margin-bottom: 12vh !important;
   }
 
   .nc-submit-button img {
@@ -1539,11 +1540,11 @@ screen and (orientation: landscape) {
   }
 
   .nc-pyramid-container {
-    transform: scale(0.7) !important;
+    transform: scale(0.85) !important;
     width: 100% !important;
     display: flex !important;
     justify-content: center !important;
-    margin-top: 2vh !important;
+    margin-top: 4vh !important;
     z-index: 10 !important;
   }
 
@@ -1587,6 +1588,7 @@ screen and (orientation: landscape) {
     margin: 0 !important;
     transform: scale(0.85) !important;
     margin-top: 1vh !important;
+    margin-bottom: -4vh !important;
   }
 
   .nc-submit-button img {

@@ -55,7 +55,7 @@ const GamePreview = forwardRef<
 
   useEffect(() => {
     // Initialize Audio objects once on mount
-    backgroundMusicRef.current = new Audio("media/Backgoundmusic-aduio.mp4");
+    backgroundMusicRef.current = new Audio("media/Background-music.mp3");
     levelWinRef.current = new Audio("media/level-win.webm");
     uiClickMusicRef.current = new Audio("media/ui-click.webm");
     successMusicRef.current = new Audio("media/success.webm");
